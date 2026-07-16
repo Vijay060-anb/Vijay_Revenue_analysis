@@ -1,0 +1,467 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtMinute": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1440,
+        832
+      ],
+      "id": "bddb071f-3a2b-4819-bce1-6108723a1fdc",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ffadb4eb-318f-490c-b56f-f75f23fb00a7"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -848,
+        336
+      ],
+      "id": "207240af-b243-4763-8a76-01f8f3768162",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the SQL results and prepare a customer behavior report.\n\nThe dataset contains:\n- Gender\n- State\n- Total Revenue\n- Total Orders\n- Average Revenue\n\nGenerate a report with the following sections:\n\n## Executive Summary\n\n## Customer Behavior Analysis\n- Compare male and female customer revenue.\n- Identify the states with the highest revenue.\n- Identify which gender contributes more revenue in each state.\n\n## Key Insights\nProvide 3 important findings.\n\n## Business Recommendations\nProvide 3 recommendations to improve customer engagement and sales.\n\n## Conclusion\nSummarize the overall customer behavior.\n\nUse only the SQL results provided.\n\nSQL Results:\n{{ JSON.stringify($input.all(), null, 2) }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2064,
+        -80
+      ],
+      "id": "67079a02-d821-45a8-ae2f-124bf0d060c7",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "llama3.2:latest",
+        "options": {
+          "think": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        2560,
+        -416
+      ],
+      "id": "3f4e1c1a-957d-4669-bcf5-b33980ab7be4",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "Wtu1fGeYuYA37Tlh",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        688,
+        128
+      ],
+      "id": "4c09a016-3eda-4ad8-87bc-4e07406c9b99",
+      "name": "Merge"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        688,
+        416
+      ],
+      "id": "6a25b9d9-a7f1-46b9-8805-eb7dd14a9273",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        688,
+        720
+      ],
+      "id": "435277d9-7e15-4582-996c-86e3ba74f49b",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT TOP (5)\n    category,\n    inventory_pressure,\n    state,\n    discount_percent,\n    sales_event,\n    brand_type\nFROM dbo.Sales_data\nORDER BY\n    CASE inventory_pressure\n        WHEN 'High' THEN 1\n        WHEN 'Low' THEN 2\n        ELSE 3\n    END,\n    CASE brand_type\n        WHEN 'Premium' THEN 1\n        WHEN 'Mass' THEN 2\n        ELSE 3\n    END;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        -528
+      ],
+      "id": "8692d562-ecc1-45a2-ad54-f215aa366d89",
+      "name": "Inventory and Product Performance Analysis",
+      "credentials": {
+        "microsoftSql": {
+          "id": "YCiOPr4BXrJYArET",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH Overall AS\n(\n    SELECT\n        customer_age,\n        category,\n        state,\n        revenue,\n\n        CASE\n            WHEN customer_age BETWEEN 18 AND 25 THEN 'TEENAGE'\n            WHEN customer_age BETWEEN 26 AND 35 THEN 'YOUNG'\n            WHEN customer_age BETWEEN 36 AND 45 THEN 'MIDDLE_AGE'\n            WHEN customer_age BETWEEN 46 AND 55 THEN 'ELDER_AGE'\n            ELSE 'OLDAGE'\n        END AS AGE_GROUP\n\n    FROM dbo.Sales_data\n)\n\nSELECT TOP (5)\n    AGE_GROUP,\n    category,\n    state,\n    SUM(revenue) AS STATE_REVENUE\nFROM Overall\nGROUP BY\n    AGE_GROUP,\n    category,\n    state\nORDER BY\n    STATE_REVENUE DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        -256
+      ],
+      "id": "f13bbc6c-3fc5-469e-882d-449c0aea1341",
+      "name": "Customer Segmentation",
+      "credentials": {
+        "microsoftSql": {
+          "id": "YCiOPr4BXrJYArET",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH Overall AS\n(\n    SELECT\n        customer_age,\n        category,\n        state,\n        revenue,\n\n        CASE\n            WHEN customer_age BETWEEN 18 AND 25 THEN 'TEENAGE'\n            WHEN customer_age BETWEEN 26 AND 35 THEN 'YOUNG'\n            WHEN customer_age BETWEEN 36 AND 45 THEN 'MIDDLE_AGE'\n            WHEN customer_age BETWEEN 46 AND 55 THEN 'ELDER_AGE'\n            ELSE 'OLDAGE'\n        END AS AGE_GROUP\n\n    FROM dbo.Sales_data\n)\n\nSELECT TOP (5)\n    AGE_GROUP,\n    category,\n    state,\n    SUM(revenue) AS STATE_REVENUE\nFROM Overall\nGROUP BY\n    AGE_GROUP,\n    category,\n    state\nORDER BY\n    STATE_REVENUE DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        352
+      ],
+      "id": "3a4a6470-7e9a-4815-97a8-e97b274295bc",
+      "name": "Revenue Analysis",
+      "credentials": {
+        "microsoftSql": {
+          "id": "YCiOPr4BXrJYArET",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT TOP (5)\n    category,\n    inventory_pressure,\n    state,\n    discount_percent,\n    sales_event,\n    brand_type\nFROM dbo.Sales_data\nORDER BY\n    CASE inventory_pressure\n        WHEN 'High' THEN 1\n        WHEN 'Low' THEN 2\n        ELSE 3\n    END,\n    CASE brand_type\n        WHEN 'Premium' THEN 1\n        WHEN 'Mass' THEN 2\n        ELSE 3\n    END,\n    discount_percent DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        672
+      ],
+      "id": "44e230f4-291c-45e0-aa17-cfe3aa49802e",
+      "name": "Discount Analysis",
+      "credentials": {
+        "microsoftSql": {
+          "id": "YCiOPr4BXrJYArET",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT TOP (10)\n    customer_gender,\n    state,\n    SUM(revenue) AS Total_Revenue,\n    COUNT(*) AS Total_Orders,\n    AVG(revenue) AS Avg_Revenue\nFROM dbo.Sales_data\nGROUP BY\n    customer_gender,\n    state\nORDER BY\n    Total_Revenue DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        896
+      ],
+      "id": "a77e4b41-06f0-400d-939c-bdad97af4562",
+      "name": "Gender-based Revenue Analysis",
+      "credentials": {
+        "microsoftSql": {
+          "id": "YCiOPr4BXrJYArET",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT TOP (10)\n    state,\n    SUM(units_sold) AS Total_Units_Sold,\n    SUM(revenue) AS Total_Revenue,\n    AVG(revenue) AS Average_Revenue\nFROM dbo.Sales_data\nGROUP BY state\nORDER BY Total_Units_Sold DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        1184
+      ],
+      "id": "cd5bbe93-1f0e-4ab5-8564-90ba59f3d3f8",
+      "name": "Unit_sold Revenue",
+      "credentials": {
+        "microsoftSql": {
+          "id": "YCiOPr4BXrJYArET",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1696,
+        416
+      ],
+      "id": "1548eff3-79fc-4c50-83fa-57cceb28914c",
+      "name": "Aggregate"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Inventory and Product Performance Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Customer Segmentation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Revenue Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discount Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gender-based Revenue Analysis",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unit_sold Revenue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        []
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inventory and Product Performance Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer Segmentation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Revenue Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discount Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Gender-based Revenue Analysis": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unit_sold Revenue": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "be30ddda-1526-49fd-bcc4-e6f4a3065dd6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "437915e7c2c7c78ab0e2502324d61de70b09a35523ef7daf7f941fdd381f818f"
+  },
+  "nodeGroups": [],
+  "id": "MCDNR9Zd2Sj7U18g",
+  "tags": []
+}
